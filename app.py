@@ -1,12 +1,10 @@
-from flask import Flask, request, jsonify, send_from_directory
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from mcstatus import JavaServer
 
-app = Flask(__name__, static_folder='.')
-
-@app.route('/')
-def index():
-    # Serve the frontend HTML page
-    return send_from_directory('.', 'index.html')
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 @app.route('/query', methods=['GET'])
 def query_server():
@@ -18,11 +16,7 @@ def query_server():
     try:
         server = JavaServer.lookup(f"{address}:{port}")
         status = server.status()
-        # Extract player names if available
-        player_names = []
-        if status.players.sample:
-            player_names = [player.name for player in status.players.sample]
-
+        player_names = [p.name for p in status.players.sample] if status.players.sample else []
         response = {
             "players_online": status.players.online,
             "players_max": status.players.max,
@@ -35,5 +29,10 @@ def query_server():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/')
+def index():
+    return "Minecraft Server Stats API is running."
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
