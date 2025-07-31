@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Minecraft Server Stats</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    /* Minecraft pixel font */
+    body {
+      font-family: 'Press Start 2P', cursive, monospace;
+      background: linear-gradient(135deg, #3a3a3a 0%, #1a1a1a 100%);
+      color: #c8c8c8;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 20px;
+      box-shadow: 0 0 15px #0f0;
+      border: 6px solid #0f0;
+      border-radius: 12px;
+    }
+    h1 {
+      text-align: center;
+      color: #0f0;
+      text-shadow: 0 0 10px #0f0;
+      margin-bottom: 30px;
+    }
+    form {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    input[type="text"], input[type="number"] {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px;
+      padding: 10px;
+      border: 3px solid #0f0;
+      border-radius: 5px;
+      background: #222;
+      color: #0f0;
+      width: 200px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: #7fff7f;
+    }
+    button {
+      font-family: 'Press Start 2P', monospace;
+      background-color: #0f0;
+      border: none;
+      border-radius: 6px;
+      color: #111;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 12px 18px;
+      transition: background-color 0.3s ease;
+      box-shadow: 0 0 8px #0f0;
+    }
+    button:hover {
+      background-color: #7fff7f;
+      box-shadow: 0 0 20px #7fff7f;
+    }
+    #result {
+      background: #111;
+      border: 4px solid #0f0;
+      border-radius: 10px;
+      padding: 20px;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 0 15px #0f0;
+      min-height: 150px;
+      color: #0f0;
+    }
+    .stat-label {
+      font-weight: bold;
+      color: #7fff7f;
+    }
+    .motd {
+      font-style: italic;
+      margin-top: 10px;
+      color: #aaffaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>Minecraft Server Stats</h1>
+
+  <form id="serverForm" autocomplete="off">
+    <input type="text" id="address" placeholder="Server IP or domain" required />
+    <input type="number" id="port" placeholder="Port (default 25565)" min="1" max="65535" />
+    <button type="submit">Get Stats</button>
+  </form>
+
+  <pre id="result">Enter a server and hit Get Stats</pre>
+
+  <script>
+    function formatMotd(motd) {
+  try {
+    const parsed = JSON.parse(motd);
+    if (typeof parsed === 'object' && parsed.text) {
+      return parsed.text;
+    }
+    return motd;
+  } catch {
+    return motd;
+  }
+}
+
+document.getElementById('serverForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const address = document.getElementById('address').value.trim();
+  const portInput = document.getElementById('port').value.trim();
+  const port = portInput ? portInput : 25565;
+  const resultEl = document.getElementById('result');
+  resultEl.textContent = "Loading...";
+  resultEl.style.color = '#0f0';
+
+  try {
+    const response = await fetch(`/query?address=${encodeURIComponent(address)}&port=${encodeURIComponent(port)}`);
+    const data = await response.json();
+
+    if (data.error) {
+      resultEl.style.color = '#ff4c4c';
+      resultEl.textContent = `Error: ${data.error}`;
+    } else {
+      let html = `
+        <div><span class="stat-label">Players Online:</span> ${data.players_online} / ${data.players_max}</div>
+        <div><span class="stat-label">Latency:</span> ${data.latency_ms} ms</div>
+        <div><span class="stat-label">Version:</span> ${data.version}</div>
+        <div class="motd"><span class="stat-label">MOTD:</span> ${formatMotd(data.motd)}</div>
+      `;
+
+      if (data.player_names && data.player_names.length > 0) {
+        html += '<div style="margin-top: 15px;"><span class="stat-label">Players Online:</span></div><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">';
+        data.player_names.forEach(name => {
+          html += `
+            <div style="text-align: center; width: 64px;">
+              <img src="https://mc-heads.net/head/${encodeURIComponent(name)}" alt="${name}" width="48" height="48" style="border: 2px solid #0f0; border-radius: 6px;" />
+              <div style="font-size: 10px; color: #7fff7f; margin-top: 4px; word-break: break-word;">${name}</div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      resultEl.innerHTML = html;
+    }
+  } catch (err) {
+    resultEl.style.color = '#ff4c4c';
+    resultEl.textContent = "Error fetching data from server.";
+  }
+});
+  </script>
+</body>
+</html>
